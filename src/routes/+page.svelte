@@ -32,7 +32,7 @@
     }
 
     function pInvestorBuy(dtable, year_min, year_max, muni=undefined, proptype=undefined) {
-        console.log("Start calc");
+        //console.log("Start calc");
         let num_txn = 0;
         let num_investor_txn = 0;
         for (let y = year_min; y <= year_max; y++) {
@@ -40,7 +40,7 @@
             num_txn += dtable.num_txn[key];
             num_investor_txn += dtable.num_investor_txn[key];
         }
-        console.log(year_min, year_max, num_txn, num_investor_txn, muni, proptype);
+        //console.log(year_min, year_max, num_txn, num_investor_txn, muni, proptype);
         return num_txn > 0 ? 100*num_investor_txn/num_txn : 0;
     }
 
@@ -48,7 +48,11 @@
     let municipalitySelected = 'Boston';
     const MUNICIPALITIES = ['Acton', 'Arlington', 'Ashland', 'Bedford', 'Bellingham', 'Belmont', 'Beverly', 'Bolton', 'Boston', 'Boxborough', 'Braintree', 'Brookline', 'Burlington', 'Cambridge', 'Canton', 'Carlisle', 'Chelsea', 'Cohasset', 'Concord', 'Danvers', 'Dedham', 'Dover', 'Duxbury', 'Essex', 'Everett', 'Foxborough', 'Framingham', 'Franklin', 'Gloucester', 'Hamilton', 'Hanover', 'Hingham', 'Holbrook', 'Holliston', 'Hopkinton', 'Hudson', 'Hull', 'Ipswich', 'Lexington', 'Lincoln', 'Littleton', 'Lynn', 'Lynnfield', 'Malden', 'Manchester', 'Marblehead', 'Marlborough', 'Marshfield', 'Maynard', 'Medfield', 'Medford', 'Medway', 'Melrose', 'Middleton', 'Milford', 'Millis', 'Milton', 'Nahant', 'Natick', 'Needham', 'Newton', 'Norfolk', 'North Reading', 'Norwell', 'Norwood', 'Peabody', 'Pembroke', 'Quincy', 'Randolph', 'Reading', 'Revere', 'Rockland', 'Rockport', 'Salem', 'Saugus', 'Scituate', 'Sharon', 'Sherborn', 'Somerville', 'Southborough', 'Stoneham', 'Stoughton', 'Stow', 'Sudbury', 'Swampscott', 'Topsfield', 'Wakefield', 'Walpole', 'Waltham', 'Watertown', 'Wayland', 'Wellesley', 'Wenham', 'Weston', 'Westwood', 'Weymouth', 'Wilmington', 'Winchester', 'Winthrop', 'Woburn', 'Wrentham'];
 
-    const PROPTYPES = ['CND', 'R1F', 'R2F', 'R3F', 'LND']
+    const PROPTYPES = {'RCD': 'Condo',
+                       'R1F': 'One Family',
+                       'R2F': 'Two Family',
+                       'R3F': 'Three Family',
+                       'LND': 'Land'};
 
     let timeSelected;
 	const time_options = [{
@@ -63,13 +67,43 @@
     const YEAR_MAX = 2022;
     let timeRangeSelected = [YEAR_MIN, YEAR_MAX];
 
-    let x_vals = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    let x_labels = [];
-    let y_vals = [];
-    $: {
-        y_vals = [];
-        //PROPTYPES.forEach();
+    const bar_padding = { top: 45, right: 1, bottom: 30, left: 40 };
+    let bar_graph_width = 400+bar_padding.left+bar_padding.right;
+    let bar_graph_height = 300+bar_padding.top+bar_padding.bottom;
+    let yScale = scaleLinear()
+		.domain([0, 100])
+		.range([bar_graph_height - bar_padding.bottom, bar_padding.top]);
+    let y_ticks = [];
+    for (let y = 0; y <= 10; y++) {
+        y_ticks.push(y*10);
     }
+    let x_vals = [];
+    let buy_vals = [];
+    let x_color_labels = [];
+
+    let xScale, colorScale, barWidth;
+    $: {
+        x_vals = [];
+        x_color_labels = [];
+        buy_vals = [];
+        for (const proptype in PROPTYPES) {
+            buy_vals.push(pInvestorBuy(data.city_year_proptype, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected, proptype));
+            buy_vals.push(pInvestorBuy(data.overall_year_proptype, timeRangeSelected[0], timeRangeSelected[1], undefined, proptype));
+            x_vals.push(municipalitySelected.slice(0, 3));
+            x_vals.push("All");
+            x_color_labels.push(proptype);
+            x_color_labels.push(proptype);
+        };
+        colorScale = d3.scaleOrdinal()
+        .domain(x_color_labels)
+        .range(d3.schemeTableau10);
+        xScale = scaleLinear()
+		.domain([0, x_vals.length])
+		.range([bar_padding.left, bar_graph_width - bar_padding.right]);
+        barWidth = barInnerWidth / x_vals.length;
+    };
+
+	$: barInnerWidth = bar_graph_width - (bar_padding.left + bar_padding.right);
 
 </script>
 
@@ -108,6 +142,83 @@
 </div>
 
 
+
+{#key timeRangeSelected}
+<div class="chart" bind:clientWidth={bar_graph_width} bind:clientHeight={bar_graph_height}>
+	<svg>
+        <!-- title -->
+        <g class="tick title">
+            <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}> What % of residential buyers in {municipalitySelected} were investors? {timeRangeSelected[0]}-{timeRangeSelected[1]}</text>
+        </g>
+		<!-- y axis -->
+		<g class="axis y-axis">
+			{#each y_ticks as tick}
+				<g class="tick tick-{tick}" transform="translate({bar_padding.left-30}, {yScale(tick)})">
+					<line x1="30" x2="100%" />
+					<text y="-4" x={tick == 0? "1.5em": "1em" }>{tick === 100? '' : tick}</text>
+				</g>
+			{/each}
+		</g>
+
+		<!-- x axis -->
+		<g class="axis x-axis">
+			{#each x_vals as point, i}
+				<g class="tick" transform="translate({xScale(i)}, {bar_graph_height})">
+					<text x={barWidth / 2} y={-bar_padding.bottom/2-4}>{point}</text>
+				</g>
+			{/each}
+		</g>
+
+		<g class="bars">
+			{#each buy_vals as point, i}
+				<rect
+					x={xScale(i)+2}
+					y={yScale(point)}
+					width={barWidth - 4}
+					height={yScale(0) - yScale(point)}
+                    fill= {colorScale(x_color_labels[i])}
+				/>
+			{/each}
+		</g>
+
+        <!-- proptype borders -->
+        <g class="axis proptype border">
+            {#each x_color_labels as point, i}
+
+            {#if i%2 === 0}
+                <g class="tick tick-proptype" transform="translate({xScale(i+2)}, 0)">
+                    <text x={-barWidth} y={bar_padding.top-3}>{PROPTYPES[point]}</text>
+                    <line y1={2*bar_padding.top/3} y2={bar_graph_height-bar_padding.bottom/2} />
+                </g>
+            {/if}
+
+            {/each}
+        </g>
+
+        <!-- axis borders -->
+        <g class="axis border">
+
+            <g class="tick tick-border" transform="translate(0, {yScale(0)})">
+                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={bar_padding.bottom-3}>Municipality</text>
+                <line x1="0" x2="100%" />
+            </g>
+            <g class="tick tick-border" transform="translate(0, {bar_padding.top})">
+                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={-bar_padding.top/3-3}>Property Type</text>
+                <line x1="0" x2="100%" />
+            </g>
+            <g class="tick tick-border">
+                <text x=0 y=0 transform="translate({bar_padding.left/2-10}, {15+bar_graph_height/2}) rotate(270)">Percentage</text>
+                <line y1="0%" y2="100%" transform="translate({bar_padding.left-1}, 0)"/>
+            </g>
+            <g class="tick tick-border" transform="translate({bar_graph_width-1}, 0)">
+                <line y1="0%" y2="100%" />
+            </g>
+
+        </g>
+	</svg>
+</div>
+
+
 <p>
     Selected Municipality is {municipalitySelected}. <br><br>
     Selected Radio Time is {timeSelected}. <br>
@@ -115,19 +226,77 @@
 </p>
 
 
-
-{#key timeRangeSelected}
-
 <p>
     Overall % investor buyers {pInvestorBuy(data.overall_year, timeRangeSelected[0], timeRangeSelected[1])}. <br>
     Selected Muni % investor buyers {pInvestorBuy(data.city_year, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected)}. <br>
+    buy vals are {buy_vals}.<br>
+    x vals are {x_vals}.
 </p>
-
 {/key}
 
 
 
 <style>
 
+.chart {
+		width: 100%;
+		max-width: 500px;
+		margin: 0 auto;
+	}
+
+	svg {
+		position: relative;
+		width: 100%;
+		height: 375px;
+	}
+
+	.tick {
+		font-family: Helvetica, Arial;
+		font-size: 0.725em;
+		font-weight: 200;
+	}
+
+	.tick line {
+		stroke: #e2e2e2;
+		stroke-dasharray: 0;
+	}
+
+    .tick.tick.tick-border text {
+		fill: #a7a7a7;
+		text-anchor: middle;
+	}
+
+    .tick.tick-border line {
+        stroke: #a7a7a7 !important;
+        stroke-width: 2;
+	}
+
+    .tick.tick-proptype line {
+        stroke: #e2e2e2 !important;
+        stroke-width: 1.25;
+	}
+
+
+	.tick.tick.tick-proptype text {
+		fill: #ccc;
+		text-anchor: middle;
+	}
+
+    .tick.title text {
+        font-size: 1.1em;
+		fill: #525252;
+		text-anchor: middle;
+	}
+
+	.tick text {
+		fill: #ccc;
+		text-anchor: start;
+        text-align: right;
+	}
+
+	.x-axis .tick text {
+		text-anchor: middle;
+        text-align: middle;
+	}
 
 </style>
