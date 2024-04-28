@@ -1,7 +1,8 @@
 <script>
     import * as d3 from "d3"
     import { scaleLinear } from 'd3-scale';
-    import Radio from './Radio.svelte'; // time radio
+    import Radio from './Radio.svelte'; // buy/sell/flip radio
+    //import Radio2 from './Radio2.svelte'; // Municipality/Investor radio
     import RangeSlider from "svelte-range-slider-pips"; // time slider
     import * as year_proptype_json from './data/year_proptype.json';
     import * as city_year_proptype_json from './data/city_year_proptype.json';
@@ -89,14 +90,25 @@
                        'R3F': 'Three Family Home',
                        'LND': 'Residential Land'};
 
-    let timeSelected;
-	const time_options = [{
-		value: '2000-2009',
-		label: '2000-2009',
+
+	const graph_type_options = [{
+		value: 'buy',
+		label: 'Buy',
 	}, {
-		value: '2010-2019',
-		label: '2010-2019',
-	}, ]
+		value: 'sell',
+		label: 'Sell',
+	}, {
+		value: 'flip',
+		label: 'Flip',
+	},];
+
+    let graphTypeSelected = 'buy';
+
+    const graph_type_keys = {
+        "buy": {"title": "Buy", "val": "buy_val", "desc": "buy_desc"},
+        "sell": {"title": "Sell", "val": "sell_val", "desc": "sell_desc"},
+        "flip": {"title": "Flip", "val": "flip_val", "desc": "flip_desc"},
+    };
 
     const YEAR_MIN = 2000;
     const YEAR_MAX = 2022;
@@ -105,6 +117,7 @@
     const bar_padding = { top: 60, right: 1, bottom: 40, left: 40 };
     let bar_graph_width = 400+bar_padding.left+bar_padding.right;
     let bar_graph_height = 300+bar_padding.top+bar_padding.bottom;
+
     let yScale = scaleLinear()
 		.domain([0, 100])
 		.range([bar_graph_height - bar_padding.bottom, bar_padding.top]);
@@ -151,23 +164,18 @@
 
 
 
-<div>
-
-    <RangeSlider bind:values={timeRangeSelected} pips first='label' last='label' all='label'   min={2000} max={2022} range />
+<Radio {graph_type_options} fontSize={16} legend='Select a graph' bind:userSelected={graphTypeSelected}/>
 
 
-</div>
+<RangeSlider bind:values={timeRangeSelected} pips first='label' last='label' all='label'   min={2000} max={2022} range />
 
 
-
-{#key timeRangeSelected}
-<div class="panel">
 <div class="chart" bind:clientWidth={bar_graph_width} bind:clientHeight={bar_graph_height}>
 	<svg>
         <!-- title -->
         <g class="tick title">
             <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}>
-            Investor Buy % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
+            Investor {graph_type_keys[graphTypeSelected].title} % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
             </text>
         </g>
 
@@ -193,12 +201,12 @@
 		<g class="bars">
 			{#each y_vals as point, i}
                     <rect
-                        title={point.buy_desc}
+                        title={point[graph_type_keys[graphTypeSelected].desc]}
                         use:tooltip
                         x={xScale(i)+2}
-                        y={yScale(point.buy_val)}
+                        y={yScale(point[graph_type_keys[graphTypeSelected].val])}
                         width={barWidth - 4}
-                        height={yScale(0) - yScale(point.buy_val)}
+                        height={yScale(0) - yScale(point[graph_type_keys[graphTypeSelected].val])}
                         fill= {colorScale(x_color_labels[i])}
                     />
 
@@ -241,182 +249,11 @@
         </g>
 	</svg>
 </div>
-
-
-<div class="chart" bind:clientWidth={bar_graph_width} bind:clientHeight={bar_graph_height}>
-	<svg>
-        <!-- title -->
-        <g class="tick title">
-            <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}>
-            Investor Sell % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
-            </text>
-        </g>
-
-		<!-- y axis -->
-		<g class="axis y-axis">
-			{#each y_ticks as tick}
-				<g class="tick tick-{tick}" transform="translate({bar_padding.left-30}, {yScale(tick)})">
-					<line x1="30" x2="100%" />
-					<text y="-2" x={tick == 0? "1.5em": "1em" }>{tick === 100? '' : tick}</text>
-				</g>
-			{/each}
-		</g>
-
-		<!-- x axis -->
-		<g class="axis x-axis">
-			{#each x_vals as point, i}
-				<g class="tick" transform="translate({xScale(i)}, {bar_graph_height})">
-					<text x={barWidth / 2} y={-bar_padding.bottom/2-4}>{point}</text>
-				</g>
-			{/each}
-		</g>
-
-		<g class="bars">
-			{#each y_vals as point, i}
-
-                    <rect
-                        title={point.sell_desc}
-                        use:tooltip
-                        x={xScale(i)+2}
-                        y={yScale(point.sell_val)}
-                        width={barWidth - 4}
-                        height={yScale(0) - yScale(point.sell_val)}
-                        fill= {colorScale(x_color_labels[i])}
-                    />
-
-			{/each}
-		</g>
-
-        <!-- proptype borders -->
-        <g class="axis proptype border">
-            {#each x_color_labels as point, i}
-
-            {#if i%2 === 0}
-                <g class="tick tick-proptype" transform="translate({xScale(i+2)}, 0)">
-                    <text x={-barWidth} y={bar_padding.top-3}>{PROPTYPES[point].replace("Home", "")}</text>
-                    <line y1={2*bar_padding.top/3} y2={bar_graph_height-bar_padding.bottom/2} />
-                </g>
-            {/if}
-
-            {/each}
-        </g>
-
-        <!-- axis borders -->
-        <g class="axis border">
-
-            <g class="tick tick-border" transform="translate(0, {yScale(0)})">
-                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={bar_padding.bottom-3}>Municipality</text>
-                <line x1="0" x2="100%" />
-            </g>
-            <g class="tick tick-border" transform="translate(0, {bar_padding.top})">
-                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={-bar_padding.top/3-3}>Property Type</text>
-                <line x1="0" x2="100%" />
-            </g>
-            <g class="tick tick-border">
-                <text x=0 y=0 transform="translate({bar_padding.left/2-5}, {15+bar_graph_height/2}) rotate(270)">Percentage</text>
-                <line y1="0%" y2="100%" transform="translate({bar_padding.left-1}, 0)"/>
-            </g>
-            <g class="tick tick-border" transform="translate({bar_graph_width-1}, 0)">
-                <line y1="0%" y2="100%" />
-            </g>
-
-        </g>
-	</svg>
-</div>
-
-
-<div class="chart" bind:clientWidth={bar_graph_width} bind:clientHeight={bar_graph_height}>
-	<svg>
-        <!-- title -->
-        <g class="tick title">
-            <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}>
-            Investor Flip % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
-            </text>
-        </g>
-
-		<!-- y axis -->
-		<g class="axis y-axis">
-			{#each y_ticks as tick}
-				<g class="tick tick-{tick}" transform="translate({bar_padding.left-30}, {yScale(tick)})">
-					<line x1="30" x2="100%" />
-					<text y="-2" x={tick == 0? "1.5em": "1em" }>{tick === 100? '' : tick}</text>
-				</g>
-			{/each}
-		</g>
-
-		<!-- x axis -->
-		<g class="axis x-axis">
-			{#each x_vals as point, i}
-				<g class="tick" transform="translate({xScale(i)}, {bar_graph_height})">
-					<text x={barWidth / 2} y={-bar_padding.bottom/2-4}>{point}</text>
-				</g>
-			{/each}
-		</g>
-
-		<g class="bars">
-			{#each y_vals as point, i}
-
-                    <rect
-                        title={point.flip_desc}
-                        use:tooltip
-                        x={xScale(i)+2}
-                        y={yScale(point.flip_val)}
-                        width={barWidth - 4}
-                        height={yScale(0) - yScale(point.flip_val)}
-                        fill= {colorScale(x_color_labels[i])}
-                    />
-
-			{/each}
-		</g>
-
-        <!-- proptype borders -->
-        <g class="axis proptype border">
-            {#each x_color_labels as point, i}
-
-            {#if i%2 === 0}
-                <g class="tick tick-proptype" transform="translate({xScale(i+2)}, 0)">
-                    <text x={-barWidth} y={bar_padding.top-3}>{PROPTYPES[point].replace("Home", "")}</text>
-                    <line y1={2*bar_padding.top/3} y2={bar_graph_height-bar_padding.bottom/2} />
-                </g>
-            {/if}
-
-            {/each}
-        </g>
-
-        <!-- axis borders -->
-        <g class="axis border">
-
-            <g class="tick tick-border" transform="translate(0, {yScale(0)})">
-                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={bar_padding.bottom-3}>Municipality</text>
-                <line x1="0" x2="100%" />
-            </g>
-            <g class="tick tick-border" transform="translate(0, {bar_padding.top})">
-                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={-bar_padding.top/3-3}>Property Type</text>
-                <line x1="0" x2="100%" />
-            </g>
-            <g class="tick tick-border">
-                <text x=0 y=0 transform="translate({bar_padding.left/2-5}, {15+bar_graph_height/2}) rotate(270)">Percentage</text>
-                <line y1="0%" y2="100%" transform="translate({bar_padding.left-1}, 0)"/>
-            </g>
-            <g class="tick tick-border" transform="translate({bar_graph_width-1}, 0)">
-                <line y1="0%" y2="100%" />
-            </g>
-
-        </g>
-	</svg>
-</div>
-
-</div>
-{/key}
-
-
-
-<Radio {time_options} fontSize={16} legend='Select a time period' bind:userSelected={timeSelected}/>
 
 
 <p>
     Selected Municipality is {municipalitySelected}. <br><br>
-    Selected Radio Time is {timeSelected}. <br>
+    Selected Radio is {graphTypeSelected}. <br>
     Selected Range Time is {timeRangeSelected}. <br><br>
 </p>
 
