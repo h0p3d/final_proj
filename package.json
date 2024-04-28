@@ -5,8 +5,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"preview": "vite preview",
-        "deploy": "npm run build && npx gh-pages -d build -t true"
+		"preview": "vite preview"
 	},
 	"devDependencies": {
 		"@rollup/plugin-json": "^6.1.0",
