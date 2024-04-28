@@ -7,6 +7,7 @@
     import * as year_proptype_json from './data/year_proptype.json';
     import * as city_year_json from './data/city_year.json';
     import * as city_year_proptype_json from './data/city_year_proptype.json';
+    import { tooltip } from './tooltip';
 
     let data = {
         "overall_year": overall_year_json,
@@ -41,7 +42,23 @@
             num_investor_txn += dtable.num_investor_txn[key];
         }
         //console.log(year_min, year_max, num_txn, num_investor_txn, muni, proptype);
-        return num_txn > 0 ? 100*num_investor_txn/num_txn : 0;
+        let val = num_txn > 0 ? 100*num_investor_txn/num_txn : 0
+        let desc = "".concat(
+        "% Investor Buys:        ", Math.round(val, 1),"%",
+        "<br>", num_investor_txn, " / ", num_txn,
+        " (Investor Buys / Total Buys)",
+        );
+        if (muni !== undefined) {
+            desc= desc.concat("<br>City:&nbsp; ", muni);
+        } else {
+            desc= desc.concat("<br>City:&nbsp; ", "All Municipalities");
+        }
+        if (proptype !== undefined) {
+            desc = desc.concat("<br>Type: ", PROPTYPES[proptype]);
+        } else {
+            desc= desc.concat("<br>Type: ", "All Residential Properties");
+        }
+        return {"val": val, "desc": desc};
     }
 
 
@@ -171,13 +188,17 @@
 
 		<g class="bars">
 			{#each buy_vals as point, i}
-				<rect
-					x={xScale(i)+2}
-					y={yScale(point)}
-					width={barWidth - 4}
-					height={yScale(0) - yScale(point)}
-                    fill= {colorScale(x_color_labels[i])}
-				/>
+
+                    <rect
+                        title={point.desc}
+                        use:tooltip
+                        x={xScale(i)+2}
+                        y={yScale(point.val)}
+                        width={barWidth - 4}
+                        height={yScale(0) - yScale(point.val)}
+                        fill= {colorScale(x_color_labels[i])}
+                    />
+
 			{/each}
 		</g>
 
