@@ -10,6 +10,9 @@
 
 <style>
 	div {
+		font-family: Helvetica, Arial;
+		font-size: 10pt;
+		color: #656565;
 		border: 1px solid #ddd;
 		box-shadow: 1px 1px 1px #ddd;
 		background: white;

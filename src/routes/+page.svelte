@@ -19,7 +19,7 @@
     function makeDataKey(year, city=undefined, proptype=undefined) {
         year = year.toString();
         if (city === undefined && proptype === undefined) {
-            return year
+            return year // "2001"
         } else if (city === undefined && proptype !== undefined) {
             //"(2001, 'RCD')"
             return "(".concat(year, ", '", proptype, "')");
@@ -38,8 +38,8 @@
         let num_investor_txn = 0;
         for (let y = year_min; y <= year_max; y++) {
             let key = makeDataKey(y, muni, proptype);
-            num_txn += dtable.num_txn[key];
-            num_investor_txn += dtable.num_investor_txn[key];
+            num_txn += dtable.num_txn[key] || 0;
+            num_investor_txn += dtable.num_investor_txn[key] || 0;
         }
         //console.log(year_min, year_max, num_txn, num_investor_txn, muni, proptype);
         let val = num_txn > 0 ? 100*num_investor_txn/num_txn : 0
@@ -66,10 +66,10 @@
     const MUNICIPALITIES = ['Acton', 'Arlington', 'Ashland', 'Bedford', 'Bellingham', 'Belmont', 'Beverly', 'Bolton', 'Boston', 'Boxborough', 'Braintree', 'Brookline', 'Burlington', 'Cambridge', 'Canton', 'Carlisle', 'Chelsea', 'Cohasset', 'Concord', 'Danvers', 'Dedham', 'Dover', 'Duxbury', 'Essex', 'Everett', 'Foxborough', 'Framingham', 'Franklin', 'Gloucester', 'Hamilton', 'Hanover', 'Hingham', 'Holbrook', 'Holliston', 'Hopkinton', 'Hudson', 'Hull', 'Ipswich', 'Lexington', 'Lincoln', 'Littleton', 'Lynn', 'Lynnfield', 'Malden', 'Manchester', 'Marblehead', 'Marlborough', 'Marshfield', 'Maynard', 'Medfield', 'Medford', 'Medway', 'Melrose', 'Middleton', 'Milford', 'Millis', 'Milton', 'Nahant', 'Natick', 'Needham', 'Newton', 'Norfolk', 'North Reading', 'Norwell', 'Norwood', 'Peabody', 'Pembroke', 'Quincy', 'Randolph', 'Reading', 'Revere', 'Rockland', 'Rockport', 'Salem', 'Saugus', 'Scituate', 'Sharon', 'Sherborn', 'Somerville', 'Southborough', 'Stoneham', 'Stoughton', 'Stow', 'Sudbury', 'Swampscott', 'Topsfield', 'Wakefield', 'Walpole', 'Waltham', 'Watertown', 'Wayland', 'Wellesley', 'Wenham', 'Weston', 'Westwood', 'Weymouth', 'Wilmington', 'Winchester', 'Winthrop', 'Woburn', 'Wrentham'];
 
     const PROPTYPES = {'RCD': 'Condo',
-                       'R1F': 'One Family',
-                       'R2F': 'Two Family',
-                       'R3F': 'Three Family',
-                       'LND': 'Land'};
+                       'R1F': 'One Family Home',
+                       'R2F': 'Two Family Home',
+                       'R3F': 'Three Family Home',
+                       'LND': 'Residential Land'};
 
     let timeSelected;
 	const time_options = [{
@@ -84,7 +84,7 @@
     const YEAR_MAX = 2022;
     let timeRangeSelected = [YEAR_MIN, YEAR_MAX];
 
-    const bar_padding = { top: 45, right: 1, bottom: 30, left: 40 };
+    const bar_padding = { top: 60, right: 1, bottom: 40, left: 40 };
     let bar_graph_width = 400+bar_padding.left+bar_padding.right;
     let bar_graph_height = 300+bar_padding.top+bar_padding.bottom;
     let yScale = scaleLinear()
@@ -165,14 +165,17 @@
 	<svg>
         <!-- title -->
         <g class="tick title">
-            <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}> What % of residential buyers in {municipalitySelected} were investors? {timeRangeSelected[0]}-{timeRangeSelected[1]}</text>
+            <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}>
+            % Investors in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
+            </text>
         </g>
+
 		<!-- y axis -->
 		<g class="axis y-axis">
 			{#each y_ticks as tick}
 				<g class="tick tick-{tick}" transform="translate({bar_padding.left-30}, {yScale(tick)})">
 					<line x1="30" x2="100%" />
-					<text y="-4" x={tick == 0? "1.5em": "1em" }>{tick === 100? '' : tick}</text>
+					<text y="-2" x={tick == 0? "1.5em": "1em" }>{tick === 100? '' : tick}</text>
 				</g>
 			{/each}
 		</g>
@@ -208,7 +211,7 @@
 
             {#if i%2 === 0}
                 <g class="tick tick-proptype" transform="translate({xScale(i+2)}, 0)">
-                    <text x={-barWidth} y={bar_padding.top-3}>{PROPTYPES[point]}</text>
+                    <text x={-barWidth} y={bar_padding.top-3}>{PROPTYPES[point].replace("Home", "")}</text>
                     <line y1={2*bar_padding.top/3} y2={bar_graph_height-bar_padding.bottom/2} />
                 </g>
             {/if}
@@ -228,7 +231,7 @@
                 <line x1="0" x2="100%" />
             </g>
             <g class="tick tick-border">
-                <text x=0 y=0 transform="translate({bar_padding.left/2-10}, {15+bar_graph_height/2}) rotate(270)">Percentage</text>
+                <text x=0 y=0 transform="translate({bar_padding.left/2-5}, {15+bar_graph_height/2}) rotate(270)">Percentage</text>
                 <line y1="0%" y2="100%" transform="translate({bar_padding.left-1}, 0)"/>
             </g>
             <g class="tick tick-border" transform="translate({bar_graph_width-1}, 0)">
@@ -268,49 +271,51 @@
 	svg {
 		position: relative;
 		width: 100%;
-		height: 375px;
+		height: 400px;
 	}
 
 	.tick {
 		font-family: Helvetica, Arial;
-		font-size: 0.725em;
+		font-size: 9pt;
 		font-weight: 200;
 	}
 
 	.tick line {
-		stroke: #e2e2e2;
+		stroke: #abaaaa;
 		stroke-dasharray: 0;
 	}
 
     .tick.tick.tick-border text {
-		fill: #a7a7a7;
+        font-size: 12pt;
+		fill: #656565;
 		text-anchor: middle;
 	}
 
     .tick.tick-border line {
-        stroke: #a7a7a7 !important;
+        stroke: #656565 !important;
         stroke-width: 2;
 	}
 
     .tick.tick-proptype line {
-        stroke: #e2e2e2 !important;
+        stroke: #abaaaa !important;
         stroke-width: 1.25;
 	}
 
 
 	.tick.tick.tick-proptype text {
-		fill: #ccc;
+		fill: #abaaaa;
 		text-anchor: middle;
 	}
 
     .tick.title text {
-        font-size: 1.1em;
-		fill: #525252;
+        font-weight: bold;
+        font-size: 14pt;
+		fill: #000000;
 		text-anchor: middle;
 	}
 
 	.tick text {
-		fill: #ccc;
+		fill: #abaaaa;
 		text-anchor: start;
         text-align: right;
 	}
