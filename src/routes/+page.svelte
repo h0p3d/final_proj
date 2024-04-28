@@ -3,16 +3,12 @@
     import { scaleLinear } from 'd3-scale';
     import Radio from './Radio.svelte'; // time radio
     import RangeSlider from "svelte-range-slider-pips"; // time slider
-    import * as overall_year_json from './data/overall_year.json';
     import * as year_proptype_json from './data/year_proptype.json';
-    import * as city_year_json from './data/city_year.json';
     import * as city_year_proptype_json from './data/city_year_proptype.json';
     import { tooltip } from './tooltip';
 
     let data = {
-        "overall_year": overall_year_json,
         "overall_year_proptype": year_proptype_json,
-        "city_year": city_year_json,
         "city_year_proptype":city_year_proptype_json,
     };
 
@@ -32,22 +28,41 @@
         }
     }
 
-    function pInvestorBuy(dtable, year_min, year_max, muni=undefined, proptype=undefined) {
+    function calcInvestorPercent(dtable, year_min, year_max, muni=undefined, proptype=undefined) {
         //console.log("Start calc");
         let num_txn = 0;
         let num_investor_txn = 0;
+        let num_investor_sell = 0
+        let num_flip = 0;
+        let num_investor_flip = 0;
         for (let y = year_min; y <= year_max; y++) {
             let key = makeDataKey(y, muni, proptype);
             num_txn += dtable.num_txn[key] || 0;
+            num_flip += dtable.num_flip[key] || 0;
+            num_investor_flip += dtable.num_investor_flip[key] || 0;
             num_investor_txn += dtable.num_investor_txn[key] || 0;
+            num_investor_sell += dtable.num_investor_sell[key] || 0;
         }
         //console.log(year_min, year_max, num_txn, num_investor_txn, muni, proptype);
-        let val = num_txn > 0 ? 100*num_investor_txn/num_txn : 0
-        let desc = "".concat(
-        "% Investor Buys:        ", Math.round(val, 1),"%",
+        let buy_val = num_txn > 0 ? 100*num_investor_txn/num_txn : 0;
+        let sell_val = num_txn > 0 ? 100*num_investor_sell/num_txn : 0;
+        let flip_val = num_flip > 0 ? 100*num_investor_flip/num_flip : 0;
+        let buy_desc = "".concat(
+        "% Investor Buys:        ", Math.round(buy_val, 1),"%",
         "<br>", num_investor_txn, " / ", num_txn,
         " (Investor Buys / Total Buys)",
         );
+        let sell_desc = "".concat(
+        "% Investor Sells:        ", Math.round(sell_val, 1),"%",
+        "<br>", num_investor_sell, " / ", num_txn,
+        " (Investor Sells / Total Sales)",
+        );
+        let flip_desc = "".concat(
+        "% Investor Flips:        ", Math.round(flip_val, 1),"%",
+        "<br>", num_investor_flip, " / ", num_flip,
+        " (Investor flips / Total flips)",
+        );
+        let desc='<br>';
         if (muni !== undefined) {
             desc= desc.concat("<br>City:&nbsp; ", muni);
         } else {
@@ -58,7 +73,10 @@
         } else {
             desc= desc.concat("<br>Type: ", "All Residential Properties");
         }
-        return {"val": val, "desc": desc};
+        return {"buy_val": buy_val, "buy_desc": buy_desc.concat(desc),
+                "sell_val": sell_val, "sell_desc": sell_desc.concat(desc),
+                "flip_val": flip_val, "flip_desc": flip_desc.concat(desc),
+        };
     }
 
 
@@ -95,17 +113,17 @@
         y_ticks.push(y*10);
     }
     let x_vals = [];
-    let buy_vals = [];
+    let y_vals = [];
     let x_color_labels = [];
 
     let xScale, colorScale, barWidth;
     $: {
         x_vals = [];
         x_color_labels = [];
-        buy_vals = [];
+        y_vals = [];
         for (const proptype in PROPTYPES) {
-            buy_vals.push(pInvestorBuy(data.city_year_proptype, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected, proptype));
-            buy_vals.push(pInvestorBuy(data.overall_year_proptype, timeRangeSelected[0], timeRangeSelected[1], undefined, proptype));
+            y_vals.push(calcInvestorPercent(data.city_year_proptype, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected, proptype));
+            y_vals.push(calcInvestorPercent(data.overall_year_proptype, timeRangeSelected[0], timeRangeSelected[1], undefined, proptype));
             x_vals.push(municipalitySelected.slice(0, 3));
             x_vals.push("All");
             x_color_labels.push(proptype);
@@ -125,11 +143,6 @@
 </script>
 
 
-
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
-
-
 <select bind:value={municipalitySelected}>
 	{#each MUNICIPALITIES as option}
 		<option value={option}>{option}</option>
@@ -137,19 +150,6 @@
 </select>
 
 
-<Radio {time_options} fontSize={16} legend='Select a time period' bind:userSelected={timeSelected}/>
-
-
-
-<!--
-
-<RangeSlider min={parseInt(YEAR_MIN)} max={parseInt(YEAR_MAX)}/>
-<RangeSlider values={[50]} pips/>
-<RangeSlider values={[2000, 2022]} min=2000 max=2022 pips range />
-
-<RangeSlider values={[2000, 2022]} min={2000} max={2022}/>
-<RangeSlider values={[50, 75]} pips />
--->
 
 <div>
 
@@ -161,12 +161,13 @@
 
 
 {#key timeRangeSelected}
+<div class="panel">
 <div class="chart" bind:clientWidth={bar_graph_width} bind:clientHeight={bar_graph_height}>
 	<svg>
         <!-- title -->
         <g class="tick title">
             <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}>
-            % Investors in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
+            Investor Buy % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
             </text>
         </g>
 
@@ -190,15 +191,14 @@
 		</g>
 
 		<g class="bars">
-			{#each buy_vals as point, i}
-
+			{#each y_vals as point, i}
                     <rect
-                        title={point.desc}
+                        title={point.buy_desc}
                         use:tooltip
                         x={xScale(i)+2}
-                        y={yScale(point.val)}
+                        y={yScale(point.buy_val)}
                         width={barWidth - 4}
-                        height={yScale(0) - yScale(point.val)}
+                        height={yScale(0) - yScale(point.buy_val)}
                         fill= {colorScale(x_color_labels[i])}
                     />
 
@@ -243,6 +243,177 @@
 </div>
 
 
+<div class="chart" bind:clientWidth={bar_graph_width} bind:clientHeight={bar_graph_height}>
+	<svg>
+        <!-- title -->
+        <g class="tick title">
+            <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}>
+            Investor Sell % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
+            </text>
+        </g>
+
+		<!-- y axis -->
+		<g class="axis y-axis">
+			{#each y_ticks as tick}
+				<g class="tick tick-{tick}" transform="translate({bar_padding.left-30}, {yScale(tick)})">
+					<line x1="30" x2="100%" />
+					<text y="-2" x={tick == 0? "1.5em": "1em" }>{tick === 100? '' : tick}</text>
+				</g>
+			{/each}
+		</g>
+
+		<!-- x axis -->
+		<g class="axis x-axis">
+			{#each x_vals as point, i}
+				<g class="tick" transform="translate({xScale(i)}, {bar_graph_height})">
+					<text x={barWidth / 2} y={-bar_padding.bottom/2-4}>{point}</text>
+				</g>
+			{/each}
+		</g>
+
+		<g class="bars">
+			{#each y_vals as point, i}
+
+                    <rect
+                        title={point.sell_desc}
+                        use:tooltip
+                        x={xScale(i)+2}
+                        y={yScale(point.sell_val)}
+                        width={barWidth - 4}
+                        height={yScale(0) - yScale(point.sell_val)}
+                        fill= {colorScale(x_color_labels[i])}
+                    />
+
+			{/each}
+		</g>
+
+        <!-- proptype borders -->
+        <g class="axis proptype border">
+            {#each x_color_labels as point, i}
+
+            {#if i%2 === 0}
+                <g class="tick tick-proptype" transform="translate({xScale(i+2)}, 0)">
+                    <text x={-barWidth} y={bar_padding.top-3}>{PROPTYPES[point].replace("Home", "")}</text>
+                    <line y1={2*bar_padding.top/3} y2={bar_graph_height-bar_padding.bottom/2} />
+                </g>
+            {/if}
+
+            {/each}
+        </g>
+
+        <!-- axis borders -->
+        <g class="axis border">
+
+            <g class="tick tick-border" transform="translate(0, {yScale(0)})">
+                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={bar_padding.bottom-3}>Municipality</text>
+                <line x1="0" x2="100%" />
+            </g>
+            <g class="tick tick-border" transform="translate(0, {bar_padding.top})">
+                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={-bar_padding.top/3-3}>Property Type</text>
+                <line x1="0" x2="100%" />
+            </g>
+            <g class="tick tick-border">
+                <text x=0 y=0 transform="translate({bar_padding.left/2-5}, {15+bar_graph_height/2}) rotate(270)">Percentage</text>
+                <line y1="0%" y2="100%" transform="translate({bar_padding.left-1}, 0)"/>
+            </g>
+            <g class="tick tick-border" transform="translate({bar_graph_width-1}, 0)">
+                <line y1="0%" y2="100%" />
+            </g>
+
+        </g>
+	</svg>
+</div>
+
+
+<div class="chart" bind:clientWidth={bar_graph_width} bind:clientHeight={bar_graph_height}>
+	<svg>
+        <!-- title -->
+        <g class="tick title">
+            <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}>
+            Investor Flip % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
+            </text>
+        </g>
+
+		<!-- y axis -->
+		<g class="axis y-axis">
+			{#each y_ticks as tick}
+				<g class="tick tick-{tick}" transform="translate({bar_padding.left-30}, {yScale(tick)})">
+					<line x1="30" x2="100%" />
+					<text y="-2" x={tick == 0? "1.5em": "1em" }>{tick === 100? '' : tick}</text>
+				</g>
+			{/each}
+		</g>
+
+		<!-- x axis -->
+		<g class="axis x-axis">
+			{#each x_vals as point, i}
+				<g class="tick" transform="translate({xScale(i)}, {bar_graph_height})">
+					<text x={barWidth / 2} y={-bar_padding.bottom/2-4}>{point}</text>
+				</g>
+			{/each}
+		</g>
+
+		<g class="bars">
+			{#each y_vals as point, i}
+
+                    <rect
+                        title={point.flip_desc}
+                        use:tooltip
+                        x={xScale(i)+2}
+                        y={yScale(point.flip_val)}
+                        width={barWidth - 4}
+                        height={yScale(0) - yScale(point.flip_val)}
+                        fill= {colorScale(x_color_labels[i])}
+                    />
+
+			{/each}
+		</g>
+
+        <!-- proptype borders -->
+        <g class="axis proptype border">
+            {#each x_color_labels as point, i}
+
+            {#if i%2 === 0}
+                <g class="tick tick-proptype" transform="translate({xScale(i+2)}, 0)">
+                    <text x={-barWidth} y={bar_padding.top-3}>{PROPTYPES[point].replace("Home", "")}</text>
+                    <line y1={2*bar_padding.top/3} y2={bar_graph_height-bar_padding.bottom/2} />
+                </g>
+            {/if}
+
+            {/each}
+        </g>
+
+        <!-- axis borders -->
+        <g class="axis border">
+
+            <g class="tick tick-border" transform="translate(0, {yScale(0)})">
+                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={bar_padding.bottom-3}>Municipality</text>
+                <line x1="0" x2="100%" />
+            </g>
+            <g class="tick tick-border" transform="translate(0, {bar_padding.top})">
+                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={-bar_padding.top/3-3}>Property Type</text>
+                <line x1="0" x2="100%" />
+            </g>
+            <g class="tick tick-border">
+                <text x=0 y=0 transform="translate({bar_padding.left/2-5}, {15+bar_graph_height/2}) rotate(270)">Percentage</text>
+                <line y1="0%" y2="100%" transform="translate({bar_padding.left-1}, 0)"/>
+            </g>
+            <g class="tick tick-border" transform="translate({bar_graph_width-1}, 0)">
+                <line y1="0%" y2="100%" />
+            </g>
+
+        </g>
+	</svg>
+</div>
+
+</div>
+{/key}
+
+
+
+<Radio {time_options} fontSize={16} legend='Select a time period' bind:userSelected={timeSelected}/>
+
+
 <p>
     Selected Municipality is {municipalitySelected}. <br><br>
     Selected Radio Time is {timeSelected}. <br>
@@ -250,26 +421,25 @@
 </p>
 
 
-<p>
-    Overall % investor buyers {pInvestorBuy(data.overall_year, timeRangeSelected[0], timeRangeSelected[1])}. <br>
-    Selected Muni % investor buyers {pInvestorBuy(data.city_year, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected)}. <br>
-    buy vals are {buy_vals}.<br>
-    x vals are {x_vals}.
-</p>
-{/key}
 
 
 
 <style>
 
+.panel {
+    max-width: 1500px;
+}
+
 .chart {
 		width: 100%;
+        min-width: 500px;
 		max-width: 500px;
 		margin: 0 auto;
+        display: inline-flex;
 	}
 
 	svg {
-		position: relative;
+        position: relative;
 		width: 100%;
 		height: 400px;
 	}
