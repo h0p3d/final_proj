@@ -3,9 +3,9 @@
     // Sami Keijonen https://webdesign.tutsplus.com/tutorials/how-to-make-custom-accessible-checkboxes-and-radio-buttons--cms-32074
     // and Inclusive Components by Heydon Pickering https://inclusive-components.design/toggle-button/
 
-    export let view_options;
+    export let comparison_options;
     export let legend;
-    export let userViewSelected = view_options[0].value;
+    export let userComparisonSelected = comparison_options[0].value;
     export let fontSize = 16;
     export let flexDirection = 'column'
 
@@ -23,12 +23,12 @@
           <div class="legend"
                            id={`label-${uniqueID}`}>{legend}
                   </div>
-    {#each view_options as { value, label }}
+    {#each comparison_options as { value, label }}
       <input
         class="sr-only"
         type="radio"
         id={slugify(label)}
-        bind:group={userViewSelected}
+        bind:group={userComparisonSelected}
         value={value} />
       <label for={slugify(label)}> {label} </label>
     {/each}

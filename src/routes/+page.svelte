@@ -2,7 +2,7 @@
     import * as d3 from "d3"
     import { scaleLinear } from 'd3-scale';
     import Radio from './Radio.svelte'; // buy/sell/flip radio
-    //import Radio2 from './Radio2.svelte'; // Municipality/Investor radio
+    import Radio2 from './Radio2.svelte'; // Municipality/Investor radio
     import RangeSlider from "svelte-range-slider-pips"; // time slider
     import * as year_proptype_json from './data/year_proptype.json';
     import * as city_year_proptype_json from './data/city_year_proptype.json';
@@ -91,6 +91,7 @@
                        'LND': 'Residential Land'};
 
 
+    // radio buy / sell / flip options
 	const graph_type_options = [{
 		value: 'buy',
 		label: 'Buy',
@@ -110,10 +111,27 @@
         "flip": {"title": "Flip", "val": "flip_val", "desc": "flip_desc"},
     };
 
+
+    // choose investor / municipality options
+    const comparison_options = [{
+		value: 'city',
+		label: 'Municipality',
+	}, {
+		value: 'inv',
+		label: 'Investor',
+	},
+    ];
+
+    let comparisonSelected = 'city';
+
+    // time range slider options
+
     const YEAR_MIN = 2000;
     const YEAR_MAX = 2022;
     let timeRangeSelected = [YEAR_MIN, YEAR_MAX];
 
+
+    // bar chart stuff
     const bar_padding = { top: 60, right: 1, bottom: 40, left: 40 };
     let bar_graph_width = 400+bar_padding.left+bar_padding.right;
     let bar_graph_height = 300+bar_padding.top+bar_padding.bottom;
@@ -156,17 +174,30 @@
 </script>
 
 
+
+<Radio2 {comparison_options} fontSize={16} legend='Select a comparison' bind:userComparisonSelected={comparisonSelected}/>
+
+
+{#if comparisonSelected === 'city'}
+
+Select a municipality:
+
 <select bind:value={municipalitySelected}>
 	{#each MUNICIPALITIES as option}
 		<option value={option}>{option}</option>
 	{/each}
 </select>
 
+{:else}
+
+Select an investor:
+
+{/if}
 
 
 <Radio {graph_type_options} fontSize={16} legend='Select a graph' bind:userSelected={graphTypeSelected}/>
 
-
+<h3>Select a time range:</h3>
 <RangeSlider bind:values={timeRangeSelected} pips first='label' last='label' all='label'   min={2000} max={2022} range />
 
 
