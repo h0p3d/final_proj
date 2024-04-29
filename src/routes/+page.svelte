@@ -5,12 +5,14 @@
     import Radio2 from './Radio2.svelte'; // Municipality/Investor radio
     import RangeSlider from "svelte-range-slider-pips"; // time slider
     import * as year_proptype_json from './data/year_proptype.json';
+    import * as investor_year_proptype from './data/investor_year_proptype.json';
     import * as city_year_proptype_json from './data/city_year_proptype.json';
     import { tooltip } from './tooltip';
 
     let data = {
         "overall_year_proptype": year_proptype_json,
         "city_year_proptype":city_year_proptype_json,
+        'investor_data': investor_year_proptype,
     };
 
     function makeDataKey(year, city=undefined, proptype=undefined) {
@@ -29,7 +31,7 @@
         }
     }
 
-    function calcInvestorPercent(dtable, year_min, year_max, muni=undefined, proptype=undefined) {
+    function calcCityPercent(dtable, year_min, year_max, muni=undefined, proptype=undefined) {
         //console.log("Start calc");
         let num_txn = 0;
         let num_investor_txn = 0;
@@ -80,6 +82,66 @@
         };
     }
 
+
+    function calcInvestorPercent(inv, year_min, year_max, proptype) {
+
+        let all_investor_buy = 0;
+        let all_investor_sell = 0;
+        let all_investor_flip = 0;
+        let num_investor_buy = 0;
+        let num_investor_sell = 0;
+        let num_investor_flip = 0;
+        let dtable = data.investor_data[inv];
+        console.log("Start calc", inv, proptype, dtable);
+        for (let y = year_min; y <= year_max; y++) {
+            let key = makeDataKey(y, undefined, proptype);
+            all_investor_sell += data["overall_year_proptype"].num_investor_sell[key] || 0;
+            all_investor_buy += data["overall_year_proptype"].num_investor_txn[key] || 0;
+            all_investor_flip += data["overall_year_proptype"].num_investor_flip[key] || 0;
+
+            if (dtable !== undefined && dtable[y] !== undefined && dtable[y][proptype] !== undefined){
+                num_investor_flip += dtable[y][proptype].flip;
+                num_investor_buy += dtable[y][proptype].buy;
+                num_investor_sell += dtable[y][proptype].sell;
+            }
+
+        }
+        //console.log(year_min, year_max, num_txn, num_investor_txn, muni, proptype);
+        let buy_val = all_investor_buy > 0 ? 100*num_investor_buy/all_investor_buy : 0;
+        let sell_val = all_investor_sell > 0 ? 100*num_investor_sell/all_investor_sell : 0;
+        let flip_val = all_investor_flip > 0 ? 100*num_investor_flip/all_investor_flip : 0;
+        let buy_desc = "".concat(
+        "% Investor Buys:        ", Math.round(buy_val, 1),"%",
+        "<br>", num_investor_buy, " / ", all_investor_buy,
+        " (", inv, " Buys / Total Investor Buys)",
+        );
+        let sell_desc = "".concat(
+        "% Investor Sells:        ", Math.round(sell_val, 1),"%",
+        "<br>", num_investor_sell, " / ", all_investor_sell,
+        " (", inv, " Sells / Total Investor Sales)",
+        );
+        let flip_desc = "".concat(
+        "% Investor Flips:        ", Math.round(flip_val, 1),"%",
+        "<br>", num_investor_flip, " / ", all_investor_flip,
+        " (", inv, " Flips / Total Investor Flips)",
+        );
+        let desc='<br>';
+        if (proptype !== undefined) {
+            desc = desc.concat("<br>Type: ", PROPTYPES[proptype]);
+        } else {
+            desc= desc.concat("<br>Type: ", "All Residential Properties");
+        }
+        let result = {"buy_val": buy_val, "buy_desc": buy_desc.concat(desc),
+                "sell_val": sell_val, "sell_desc": sell_desc.concat(desc),
+                "flip_val": flip_val, "flip_desc": flip_desc.concat(desc),
+        };
+        console.log(result)
+        return result;
+    }
+
+
+    const TOP25INVESTORS = ['FEDERAL NATIONAL MORTGAGE ASSOCIATION (FANNIE MAE)', 'DEUTSCHE BANK NATIONAL TRUST COMPANY', 'US BANK', 'WELLS FARGO BANK', 'THE BANK OF NEW YORK MELLON', 'FEDERAL HOME LOAN MORTGAGE CORPORATION (FREDDIE MAC)', 'HSBC BANK USA', 'BANK OF AMERICA', 'JPMORGAN CHASE BANK', 'MERS', 'CITIBANK', 'GMAC MORTGAGE CORP', 'NATIONSTAR MORTGAGE LLC', 'LASALLE BANK', 'WILMINGTON SVGS FUND SOC', 'AURORA LOAN SVCS LLC', 'USA HUD', 'PRUDENTIAL RELOCATION INC', 'COUNTRYWIDE HOME LOANS', 'BAC HOME LOANS SVCNG LP', 'SIRVA RELOCATION LLC', 'NSP RESIDENTIAL LLC', 'FANNIE MAE', 'PULTE HOMES OF NE LLC', 'REGATTA RIVERVIEW LLC'];
+    let investorSelected = 'MERS';
 
     let municipalitySelected = 'Boston';
     const MUNICIPALITIES = ['Acton', 'Arlington', 'Ashland', 'Bedford', 'Bellingham', 'Belmont', 'Beverly', 'Bolton', 'Boston', 'Boxborough', 'Braintree', 'Brookline', 'Burlington', 'Cambridge', 'Canton', 'Carlisle', 'Chelsea', 'Cohasset', 'Concord', 'Danvers', 'Dedham', 'Dover', 'Duxbury', 'Essex', 'Everett', 'Foxborough', 'Framingham', 'Franklin', 'Gloucester', 'Hamilton', 'Hanover', 'Hingham', 'Holbrook', 'Holliston', 'Hopkinton', 'Hudson', 'Hull', 'Ipswich', 'Lexington', 'Lincoln', 'Littleton', 'Lynn', 'Lynnfield', 'Malden', 'Manchester', 'Marblehead', 'Marlborough', 'Marshfield', 'Maynard', 'Medfield', 'Medford', 'Medway', 'Melrose', 'Middleton', 'Milford', 'Millis', 'Milton', 'Nahant', 'Natick', 'Needham', 'Newton', 'Norfolk', 'North Reading', 'Norwell', 'Norwood', 'Peabody', 'Pembroke', 'Quincy', 'Randolph', 'Reading', 'Revere', 'Rockland', 'Rockport', 'Salem', 'Saugus', 'Scituate', 'Sharon', 'Sherborn', 'Somerville', 'Southborough', 'Stoneham', 'Stoughton', 'Stow', 'Sudbury', 'Swampscott', 'Topsfield', 'Wakefield', 'Walpole', 'Waltham', 'Watertown', 'Wayland', 'Wellesley', 'Wenham', 'Weston', 'Westwood', 'Weymouth', 'Wilmington', 'Winchester', 'Winthrop', 'Woburn', 'Wrentham'];
@@ -153,10 +215,20 @@
         x_color_labels = [];
         y_vals = [];
         for (const proptype in PROPTYPES) {
-            y_vals.push(calcInvestorPercent(data.city_year_proptype, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected, proptype));
-            y_vals.push(calcInvestorPercent(data.overall_year_proptype, timeRangeSelected[0], timeRangeSelected[1], undefined, proptype));
-            x_vals.push(municipalitySelected.slice(0, 3));
+            // specific
+            if (comparisonSelected === 'city'){
+                y_vals.push(calcCityPercent(data.city_year_proptype, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected, proptype));
+                x_vals.push(municipalitySelected.slice(0, 3));
+            } else {
+                //y_vals.push(calcCityPercent(data.city_year_proptype, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected, proptype));
+                //x_vals.push(municipalitySelected.slice(0, 3));
+                y_vals.push(calcInvestorPercent(investorSelected, timeRangeSelected[0], timeRangeSelected[1], proptype));
+                x_vals.push(investorSelected.slice(0, 3));
+            }
+            // all MAPC region
+            y_vals.push(calcCityPercent(data.overall_year_proptype, timeRangeSelected[0], timeRangeSelected[1], undefined, proptype));
             x_vals.push("All");
+
             x_color_labels.push(proptype);
             x_color_labels.push(proptype);
         };
@@ -192,6 +264,12 @@ Select a municipality:
 
 Select an investor:
 
+<select bind:value={investorSelected}>
+	{#each TOP25INVESTORS as option}
+		<option value={option}>{option}</option>
+	{/each}
+</select>
+
 {/if}
 
 
@@ -201,12 +279,17 @@ Select an investor:
 <RangeSlider bind:values={timeRangeSelected} pips first='label' last='label' all='label'   min={2000} max={2022} range />
 
 
+
 <div class="chart" bind:clientWidth={bar_graph_width} bind:clientHeight={bar_graph_height}>
 	<svg>
         <!-- title -->
         <g class="tick title">
             <text y={bar_padding.top/3-5} x={bar_padding.left + (bar_graph_width-bar_padding.left-bar_padding.right)/2}>
-            Investor {graph_type_keys[graphTypeSelected].title} % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
+            {#if comparisonSelected === 'city'}
+            All Investors {graph_type_keys[graphTypeSelected].title} % in {municipalitySelected} {" "} {timeRangeSelected[0]}-{timeRangeSelected[1]}
+            {:else}
+            {investorSelected} {graph_type_keys[graphTypeSelected].title} % {timeRangeSelected[0]}-{timeRangeSelected[1]}
+            {/if}
             </text>
         </g>
 
@@ -262,7 +345,9 @@ Select an investor:
         <g class="axis border">
 
             <g class="tick tick-border" transform="translate(0, {yScale(0)})">
-                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={bar_padding.bottom-3}>Municipality</text>
+                <text x={bar_padding.left+(bar_graph_width-bar_padding.left)/2} y={bar_padding.bottom-3}>
+                    {comparisonSelected === 'city' ? 'Municipality' : 'Investor'}
+                </text>
                 <line x1="0" x2="100%" />
             </g>
             <g class="tick tick-border" transform="translate(0, {bar_padding.top})">
@@ -282,10 +367,13 @@ Select an investor:
 </div>
 
 
+
 <p>
-    Selected Municipality is {municipalitySelected}. <br><br>
-    Selected Radio is {graphTypeSelected}. <br>
-    Selected Range Time is {timeRangeSelected}. <br><br>
+    Selected Municipality is {municipalitySelected}. <br>
+    Selected Investor is {investorSelected}. <br>
+    Selected Comparison is {comparisonSelected}. <br>
+    Selected Graph is {graphTypeSelected}. <br>
+    Selected Years is {timeRangeSelected}. <br><br>
 </p>
 
 
