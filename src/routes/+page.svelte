@@ -10,9 +10,9 @@
     import { tooltip } from './tooltip';
 
     let data = {
-        "overall_year_proptype": year_proptype_json,
-        "city_year_proptype":city_year_proptype_json,
-        'investor_data': investor_year_proptype,
+        "overall_year_proptype": year_proptype_json.default,
+        "city_year_proptype":city_year_proptype_json.default,
+        'investor_data': investor_year_proptype.default,
     };
 
     function makeDataKey(year, city=undefined, proptype=undefined) {
