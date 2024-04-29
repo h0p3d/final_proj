@@ -15,6 +15,10 @@
         'investor_data': investor_year_proptype.default,
     };
 
+    function displayInvestor(inv) {
+
+    }
+
     function makeDataKey(year, city=undefined, proptype=undefined) {
         year = year.toString();
         if (city === undefined && proptype === undefined) {
@@ -83,60 +87,74 @@
     }
 
 
-    function calcInvestorPercent(inv, year_min, year_max, proptype) {
-
+    function calcInvestorPercent(inv, year_min, year_max) {
+        let invData = {};
         let all_investor_buy = 0;
         let all_investor_sell = 0;
         let all_investor_flip = 0;
-        let num_investor_buy = 0;
-        let num_investor_sell = 0;
-        let num_investor_flip = 0;
-        let dtable = data.investor_data[inv];
-        console.log("Start calc", inv, proptype, dtable);
-        for (let y = year_min; y <= year_max; y++) {
-            let key = makeDataKey(y, undefined, proptype);
-            all_investor_sell += data["overall_year_proptype"].num_investor_sell[key] || 0;
-            all_investor_buy += data["overall_year_proptype"].num_investor_txn[key] || 0;
-            all_investor_flip += data["overall_year_proptype"].num_investor_flip[key] || 0;
 
-            if (dtable !== undefined && dtable[y] !== undefined && dtable[y][proptype] !== undefined){
-                num_investor_flip += dtable[y][proptype].flip;
-                num_investor_buy += dtable[y][proptype].buy;
-                num_investor_sell += dtable[y][proptype].sell;
+        for (const proptype in PROPTYPES) {
+
+            let num_investor_buy = 0;
+            let num_investor_sell = 0;
+            let num_investor_flip = 0;
+
+            let dtable = data.investor_data[inv];
+            console.log("Start calc", inv, proptype, dtable);
+            for (let y = year_min; y <= year_max; y++) {
+                if (dtable !== undefined && dtable[y] !== undefined && dtable[y][proptype] !== undefined){
+                    num_investor_flip += dtable[y][proptype].flip;
+                    num_investor_buy += dtable[y][proptype].buy;
+                    num_investor_sell += dtable[y][proptype].sell;
+
+                    all_investor_buy += dtable[y][proptype].buy;
+                    all_investor_sell += dtable[y][proptype].sell;
+                    all_investor_flip += dtable[y][proptype].flip;
+                }
             }
+            invData[proptype] = {"buy_val": num_investor_buy, "buy_desc": '',
+                    "sell_val": num_investor_sell, "sell_desc": '',
+                    "flip_val": num_investor_flip, "flip_desc": '',
+            };
 
         }
-        //console.log(year_min, year_max, num_txn, num_investor_txn, muni, proptype);
-        let buy_val = all_investor_buy > 0 ? 100*num_investor_buy/all_investor_buy : 0;
-        let sell_val = all_investor_sell > 0 ? 100*num_investor_sell/all_investor_sell : 0;
-        let flip_val = all_investor_flip > 0 ? 100*num_investor_flip/all_investor_flip : 0;
-        let buy_desc = "".concat(
-        "% Investor Buys:        ", Math.round(buy_val, 1),"%",
-        "<br>", num_investor_buy, " / ", all_investor_buy,
-        " (", inv, " Buys / Total Investor Buys)",
-        );
-        let sell_desc = "".concat(
-        "% Investor Sells:        ", Math.round(sell_val, 1),"%",
-        "<br>", num_investor_sell, " / ", all_investor_sell,
-        " (", inv, " Sells / Total Investor Sales)",
-        );
-        let flip_desc = "".concat(
-        "% Investor Flips:        ", Math.round(flip_val, 1),"%",
-        "<br>", num_investor_flip, " / ", all_investor_flip,
-        " (", inv, " Flips / Total Investor Flips)",
-        );
-        let desc='<br>';
-        if (proptype !== undefined) {
-            desc = desc.concat("<br>Type: ", PROPTYPES[proptype]);
-        } else {
-            desc= desc.concat("<br>Type: ", "All Residential Properties");
+
+        for (const proptype in PROPTYPES) {
+            //console.log(year_min, year_max, num_txn, num_investor_txn, muni, proptype);
+            let result = invData[proptype];
+            let buy_val = all_investor_buy > 0 ? 100*result.buy_val/all_investor_buy : 0;
+            let sell_val = all_investor_sell > 0 ? 100*result.sell_val/all_investor_sell : 0;
+            let flip_val = all_investor_flip > 0 ? 100*result.flip_val/all_investor_flip : 0;
+            let buy_desc = "".concat(
+            "% Investor Buys:        ", Math.round(buy_val, 1),"%",
+            "<br>", result.buy_val, " / ", all_investor_buy,
+            " (", inv, " Buy proptype / ", inv, " Buys)",
+            );
+            let sell_desc = "".concat(
+            "% Investor Sells:        ", Math.round(sell_val, 1),"%",
+            "<br>", result.sell_val, " / ", all_investor_sell,
+            " (", inv, " Sell proptype / ", inv, " Sales)",
+            );
+            let flip_desc = "".concat(
+            "% Investor Flips:        ", Math.round(flip_val, 1),"%",
+            "<br>", result.flip_val, " / ", all_investor_flip,
+            " (", inv, " Flip proptype / ", inv, " Flips)",
+            );
+            let desc='<br>';
+            if (proptype !== undefined) {
+                desc = desc.concat("<br>Type: ", PROPTYPES[proptype]);
+            } else {
+                desc= desc.concat("<br>Type: ", "All Residential Properties");
+            }
+            result["buy_val"] = buy_val;
+            result["sell_val"] = sell_val;
+            result["flip_val"] = flip_val;
+            result["buy_desc"] = buy_desc.concat(desc);
+            result["sell_desc"] = sell_desc.concat(desc);
+            result["flip_desc"] = flip_desc.concat(desc);
         }
-        let result = {"buy_val": buy_val, "buy_desc": buy_desc.concat(desc),
-                "sell_val": sell_val, "sell_desc": sell_desc.concat(desc),
-                "flip_val": flip_val, "flip_desc": flip_desc.concat(desc),
-        };
-        console.log(result)
-        return result;
+
+        return invData;
     }
 
 
@@ -214,6 +232,10 @@
         x_vals = [];
         x_color_labels = [];
         y_vals = [];
+        let investor_vals = {};
+        if (comparisonSelected !== 'city'){
+            investor_vals = calcInvestorPercent(investorSelected, timeRangeSelected[0], timeRangeSelected[1]);
+        }
         for (const proptype in PROPTYPES) {
             // specific
             if (comparisonSelected === 'city'){
@@ -222,7 +244,7 @@
             } else {
                 //y_vals.push(calcCityPercent(data.city_year_proptype, timeRangeSelected[0], timeRangeSelected[1], municipalitySelected, proptype));
                 //x_vals.push(municipalitySelected.slice(0, 3));
-                y_vals.push(calcInvestorPercent(investorSelected, timeRangeSelected[0], timeRangeSelected[1], proptype));
+                y_vals.push(investor_vals[proptype]);
                 x_vals.push(investorSelected.slice(0, 3));
             }
             // all MAPC region
